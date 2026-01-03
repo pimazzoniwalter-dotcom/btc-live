@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>BTC Live</title>
+
+  <style>
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      height: 100vh;
+      overflow: hidden;
+      font-family: Arial, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: white;
+      background: #0b0e11;
+    }
+
+    /* ===== BACKGROUND VIDEO ===== */
+    #bg-video {
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      z-index: -3;
+      filter: brightness(0.78) contrast(1.05);
+      transition: opacity 1.5s ease;
+      opacity: 1;
+    }
+
+    .overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.12);
+      z-index: -2;
+    }
+
+    /* ===== PRICE CENTER ===== */
+    .center-wrap {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1;
+      padding: 20px;
+    }
+
+    .price {
+      font-weight: 800;
+      text-align: center;
+      letter-spacing: -0.5px;
+      padding: 12px 20px;
+      border-radius: 18px;
+      font-size: clamp(2.6rem, 6vw, 4.6rem);
+      backdrop-filter: blur(3px);
+      text-shadow:
+        0 8px 22px rgba(0,0,0,0.65),
+        0 3px 8px rgba(0,0,0,0.45);
+      user-select: none;
+    }
+
+    .up { color: #0ecb81; }
+    .down { color: #f6465d; }
+
+    /* ===== HUD METRICS ===== */
+    .hud {
+      position: fixed;
+      left: 18px;
+      bottom: 18px;
+      display: flex;
+      gap: 12px;
+      z-index: 2;
+      opacity: 0.95;
+    }
+
+    .hud .card {
+      padding: 12px 14px;
+      border-radius: 16px;
+      min-width: 140px;
+      background: rgba(15,20,30,0.45);
+      border: 1px solid rgba(255,255,255,0.12);
+      backdrop-filter: blur(12px);
+    }
+
+    .hud .label {
+      font-size: 0.78rem;
+      opacity: 0.75;
+      margin-bottom: 6px;
+    }
+
+    .hud .value {
+      font-size: 1.05rem;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+
+    .pos { color: #0ecb81; }
+    .neg { color: #f6465d; }
+
+    /* ===== MUSIC UI (DESKTOP) ===== */
+    .music-ui {
+      position: fixed;
+      right: 18px;
+      bottom: 18px;
+      width: 320px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      padding: 12px 14px;
+      border-radius: 18px;
+      background: rgba(15,20,30,0.5);
+      border: 1px solid rgba(255,255,255,0.12);
+      backdrop-filter: blur(14px);
+      z-index: 3;
+    }
+
+    .music-row {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+    }
+
+    select {
+      flex: 1;
+      background: rgba(255,255,255,0.08);
+      color: white;
+      border: 1px solid rgba(255,255,255,0.18);
+      border-radius: 14px;
+      padding: 10px 12px;
+      font-size: 0.98rem;
+      outline: none;
+    }
+
+    option { color: black; }
+
+    button {
+      background: rgba(255,255,255,0.1);
+      color: white;
+      border: 1px solid rgba(255,255,255,0.18);
+      border-radius: 14px;
+      padding: 10px 16px;
+      font-size: 0.98rem;
+      cursor: pointer;
+    }
+
+    .music-note {
+      font-size: 0.65rem;
+      opacity: 0.45;
+      user-select: none;
+    }
+
+    /* ===== YT hidden ===== */
+    #ytPlayer {
+      position: fixed;
+      width: 1px;
+      height: 1px;
+      left: -9999px;
+      top: -9999px;
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    /* ===== MOBILE LAYOUT ===== */
+    @media (max-width: 600px) {
+      .hud {
+        left: 50%;
+        transform: translateX(-50%);
+        bottom: 120px;
+        gap: 12px;
+      }
+      .hud .card {
+        min-width: 0;
+        padding: 12px 14px;
+      }
+
+      .music-ui {
+        left: 50%;
+        right: auto;
+        transform: translateX(-50%);
+        bottom: 18px;
+        width: calc(100% - 24px);
+        max-width: 480px;
+        padding: 14px 16px;
+      }
+
+      select, button {
+        font-size: 1rem;
+        padding: 12px 14px;
+      }
+    }
+
+    @media (max-width: 380px) {
+      .hud { bottom: 135px; gap: 10px; }
+      .hud .value { font-size: 0.98rem; }
+    }
+  </style>
+</head>
+
+<body>
+  <video id="bg-video" autoplay muted loop playsinline></video>
+  <div class="overlay"></div>
+
+  <div class="center-wrap">
+    <div id="price" class="price">$---</div>
+  </div>
+
+  <div class="hud" aria-label="BTC 24h metrics">
+    <div class="card">
+      <div class="label">24h %</div>
+      <div id="mChange" class="value">—</div>
+    </div>
+    <div class="card">
+      <div class="label">24h High</div>
+      <div id="mHigh" class="value">—</div>
+    </div>
+    <div class="card">
+      <div class="label">24h Low</div>
+      <div id="mLow" class="value">—</div>
+    </div>
+  </div>
+
+  <div class="music-ui">
+    <div class="music-row">
+      <select id="track" title="Music">
+        <option value="36YnV9STBqc">Tu música</option>
+        <option value="jfKfPfyJRdk">Lofi Girl</option>
+        <option value="rUxyKA_-grg">Chillhop</option>
+        <option value="5yx6BWlEVcY">Jazz</option>
+      </select>
+      <button id="toggle" title="Play / Pause">▶︎</button>
+    </div>
+    <div class="music-note">Music via YouTube</div>
+  </div>
+
+  <div id="ytPlayer"></div>
+  <script src="https://www.youtube.com/iframe_api"></script>
+
+  <script>
+    const CONFIG = {
+      backgroundVideos: ["background2.mp4","background3.mp4","background4.mp4"],
+      rotateEveryMs: 15 * 60 * 1000,
+      fadeMs: 1500,
+      wsUrl: "wss://stream.binance.com:9443/ws/btcusdt@trade",
+      metricsUrl: "https://api.binance.com/api/v3/ticker/24hr?symbol=BTCUSDT",
+      musicFallback: "jfKfPfyJRdk"
+    };
+
+    const formatter = new Intl.NumberFormat("es-AR", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    });
+    const fmt = (n) => `$${formatter.format(Number(n))}`;
+
+    // Live price WS
+    const priceEl = document.getElementById("price");
+    let lastPrice = null;
+    const socket = new WebSocket(CONFIG.wsUrl);
+
+    socket.onmessage = (e) => {
+      const p = parseFloat(JSON.parse(e.data).p);
+      priceEl.textContent = fmt(p);
+
+      if (lastPrice !== null) {
+        priceEl.classList.toggle("up", p > lastPrice);
+        priceEl.classList.toggle("down", p < lastPrice);
+      }
+      lastPrice = p;
+    };
+
+    // Metrics
+    const mChange = document.getElementById("mChange");
+    const mHigh = document.getElementById("mHigh");
+    const mLow = document.getElementById("mLow");
+
+    async function updateMetrics() {
+      try {
+        const r = await fetch(CONFIG.metricsUrl, { cache: "no-store" });
+        const d = await r.json();
+
+        const pct = parseFloat(d.priceChangePercent);
+        mChange.textContent = pct.toFixed(2) + "%";
+        mChange.classList.toggle("pos", pct >= 0);
+        mChange.classList.toggle("neg", pct < 0);
+
+        mHigh.textContent = fmt(d.highPrice);
+        mLow.textContent = fmt(d.lowPrice);
+      } catch (err) {
+        // leave as-is
+      }
+    }
+    updateMetrics();
+    setInterval(updateMetrics, 20000);
+
+    // Background rotation
+    const bg = document.getElementById("bg-video");
+    let idx = 0;
+
+    function setBg(i) {
+      bg.src = CONFIG.backgroundVideos[i];
+      bg.play().catch(()=>{});
+    }
+    setBg(idx);
+
+    setInterval(() => {
+      bg.style.opacity = 0;
+      setTimeout(() => {
+        idx = (idx + 1) % CONFIG.backgroundVideos.length;
+        setBg(idx);
+        bg.style.opacity = 1;
+      }, CONFIG.fadeMs);
+    }, CONFIG.rotateEveryMs);
+
+    // YouTube
+    const track = document.getElementById("track");
+    const toggle = document.getElementById("toggle");
+    let player, playing = false;
+
+    window.onYouTubeIframeAPIReady = () => {
+      player = new YT.Player("ytPlayer", {
+        videoId: track.value,
+        playerVars: { autoplay: 0, controls: 0, playsinline: 1 }
+      });
+    };
+
+    toggle.onclick = () => {
+      if (!player) return;
+      if (!playing) { player.playVideo(); playing = true; toggle.textContent = "❚❚"; }
+      else { player.pauseVideo(); playing = false; toggle.textContent = "▶︎"; }
+    };
+
+    track.onchange = () => {
+      if (!player) return;
+      player.loadVideoById(track.value || CONFIG.musicFallback);
+      if (playing) player.playVideo();
+    };
+  </script>
+</body>
+</html>
